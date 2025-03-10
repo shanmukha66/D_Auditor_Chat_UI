@@ -85,21 +85,7 @@ The system accepts questions related to:
 
 ## Features Demonstrated in Screenshots
 
-1. Main Interface (`1.png`)
-   - Clean, professional Deloitte branding
-   - Tax prompt input area
-   - Business/Client selection
-
-2. Query Validation (`2.png`, `3.png`)
-   - Non-tax queries are rejected
-   - Clear error messaging
-   - User guidance for valid questions
-
-3. Comprehensive Responses (`4.png`, `5.png`, `6.png`)
-   - Detailed tax information
-   - Professional formatting
-   - Reference to relevant tax codes
-   - Practical implementation guidance
+![images](/working/1.png)
 
 ## Security and Best Practices
 - API key protection through environment variables
