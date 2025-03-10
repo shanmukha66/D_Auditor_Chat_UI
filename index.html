@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deloitte Auditor Chat UI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Deloitte Auditor Enterprise Chat UI</h1>
+            <span class="deloitte-logo">Deloitte.</span>
+        </div>
+        <div class="chat-interface">
+            <div class="prompt-section">
+                <h2>Tax Prompt</h2>
+                <textarea id="taxPrompt" rows="4" placeholder="Enter your tax-related question here..."></textarea>
+                <div class="query-type">
+                    <span>Question Type:</span>
+                    <label class="radio-label">
+                        <input type="radio" name="queryType" value="business" checked> Business/Client
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="queryType" value="student"> Student/Education
+                    </label>
+                </div>
+            </div>
+            <div class="button-group">
+                <button id="sendBtn" class="send-btn">
+                    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNlbmQiPjxsaW5lIHgxPSIyMiIgeTE9IjIiIHgyPSIxMSIgeTI9IjEzIi8+PHBvbHlnb24gcG9pbnRzPSIyMiAyIDEyIDIyIDkgMTMgMiA5IDIyIDIiLz48L3N2Zz4=" class="button-icon" alt="Send">
+                    Send
+                </button>
+                <button id="cancelBtn" class="cancel-btn">
+                    Cancel
+                </button>
+            </div>
+            <div class="response-section">
+                <h2>Response</h2>
+                <div id="responseArea" class="response-area"></div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+document.addEventListener('DOMContentLoaded', function() {
+    const taxPrompt = document.getElementById('taxPrompt');
+    const sendBtn = document.getElementById('sendBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const responseArea = document.getElementById('responseArea');
+    const historyArea = document.getElementById('historyArea');
+
+    // Grok API endpoint
+    const API_ENDPOINT = 'https://api.x.ai/v1/chat/completions';
+    
+    // Get API key from environment variable
+    let XAI_API_KEY = import.meta.env.VITE_XAI_API_KEY;
+    
+    // Ensure API key is properly formatted (should start with "xai-")
+    if (XAI_API_KEY && !XAI_API_KEY.startsWith('xai-')) {
+        XAI_API_KEY = `xai-${XAI_API_KEY}`;
+    }
+
+    // Function to save chat history to local storage
+    function saveToHistory(question, answer) {
+        const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+        history.push({
+            timestamp: new Date().toISOString(),
+            question: question,
+            answer: answer
+        });
+        // Keep only the last 50 conversations
+        if (history.length > 50) {
+            history.shift();
+        }
+        localStorage.setItem('chatHistory', JSON.stringify(history));
+        
+        // Update the history display
+        updateHistoryDisplay();
+    }
+
+    // Function to display chat history
+    function updateHistoryDisplay() {
+        const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+        if (history.length === 0) {
+            historyArea.innerHTML = '<div class="history-empty">No chat history available</div>';
+            return;
+        }
+
+        let historyHTML = '<div class="history-container">';
+        // Display most recent conversations first
+        const reversedHistory = [...history].reverse();
+        reversedHistory.forEach((item, index) => {
+            const date = new Date(item.timestamp).toLocaleString();
+            historyHTML += `
+                <div class="history-item">
+                    <div class="history-timestamp">${date}</div>
+                    <div class="history-question"><strong>Q:</strong> ${item.question}</div>
+                    <div class="history-answer"><strong>A:</strong> ${item.answer.replace(/\n/g, '<br>')}</div>
+                </div>
+            `;
+        });
+        historyHTML += '</div>';
+        historyArea.innerHTML = historyHTML;
+    }
+
+    sendBtn.addEventListener('click', async function() {
+        const prompt = taxPrompt.value.trim();
+        
+        if (!prompt) {
+            alert('Please enter a tax-related question');
+            return;
+        }
+
+        // Check if the question is tax-related
+        const taxKeywords = ['tax', 'deduction', 'credit', 'irs', 'audit', 'filing', 'return', 'income', 'expense', 'depreciation', 'amortization', 'liability', 'asset', 'capital gain', 'dividend', 'withholding', 'exemption'];
+        const isTaxRelated = taxKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
+        
+        if (!isTaxRelated) {
+            responseArea.innerHTML = '<div class="warning">Please limit your questions to tax-related topics. This system is designed specifically for tax advisory purposes.</div>';
+            return;
+        }
+
+        try {
+            // Disable button and show loading state
+            sendBtn.disabled = true;
+            responseArea.innerHTML = '<div class="loading">Processing your tax question...</div>';
+
+            // For demonstration purposes - check if we should use mock API
+            const useMockApi = true; // Set to false to use the real API if you've added credits
+            
+            let grokResponse;
+            
+            if (useMockApi) {
+                // Simulate API delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Mock response based on the question
+                grokResponse = getMockResponse(prompt);
+                
+                // Display the mock response
+                responseArea.innerHTML = `<div class="success">${grokResponse.replace(/\n/g, '<br>')}</div>`;
+                
+                // Save to history
+                saveToHistory(prompt, grokResponse);
+            } else {
+                // Real API call code
+                console.log('Sending request to Grok API...');
+                console.log('API Key (first 5 chars):', XAI_API_KEY ? XAI_API_KEY.substring(0, 5) + '...' : 'Not found');
+                
+                const requestBody = {
+                    messages: [
+                        {
+                            "role": "system",
+                            "content": "You are a specialized tax advisor assistant for Deloitte auditors. Only provide information related to US Tax law, tax deductions, tax credits, and tax filing procedures. If a question is not related to taxation, politely decline to answer and remind the user that you can only assist with tax-related inquiries. Your responses should be accurate, concise, and focused on helping auditors understand tax implications for their clients."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    model: "grok-2-1212",
+                    stream: false,
+                    temperature: 0.7
+                };
+                
+                console.log('Request body:', JSON.stringify(requestBody));
+
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${XAI_API_KEY}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries([...response.headers]));
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response body:', errorText);
+                    
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(errorText);
+                    } catch (e) {
+                        errorData = { error: { message: 'Could not parse error response' } };
+                    }
+                    
+                    throw new Error(
+                        errorData.error?.message || 
+                        `Server responded with status: ${response.status}`
+                    );
+                }
+
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.error) {
+                    responseArea.innerHTML = `<div class="error">Error: ${data.error.message || data.error}</div>`;
+                } else {
+                    // Get the response content from Grok's response format
+                    grokResponse = data.choices[0].message.content;
+                    // Format the response with proper styling
+                    responseArea.innerHTML = `<div class="success">${grokResponse.replace(/\n/g, '<br>')}</div>`;
+                    
+                    // Save to history
+                    saveToHistory(prompt, grokResponse);
+                }
+            }
+        } catch (error) {
+            console.error('Detailed error:', error);
+            responseArea.innerHTML = `<div class="error">Error: ${error.message || 'Unable to get response'}</div>`;
+        } finally {
+            sendBtn.disabled = false;
+        }
+    });
+
+    // Add keyboard shortcut (Enter to send)
+    taxPrompt.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendBtn.click();
+        }
+    });
+
+    cancelBtn.addEventListener('click', function() {
+        taxPrompt.value = '';
+        responseArea.textContent = '';
+    });
+    
+    // Check if API key is available
+    if (!XAI_API_KEY) {
+        console.error('Grok API key not found. Please set the VITE_XAI_API_KEY environment variable.');
+        responseArea.innerHTML = '<div class="error">Error: Grok API key not configured. Please set the VITE_XAI_API_KEY environment variable in your .env file.</div>';
+    } else {
+        // Check if credits need to be added (based on the banner in the screenshot)
+        responseArea.innerHTML = '<div class="warning">Note: You may need to add credits to your xAI team to make API requests. If you encounter errors, please check your xAI account dashboard.</div>';
+    }
+    
+    // Initialize history display
+    updateHistoryDisplay();
+});
+
+// Function to generate mock responses for demonstration purposes
+function getMockResponse(prompt) {
+    const lowerPrompt = prompt.toLowerCase();
+    
+    // International student tax filing
+    if (lowerPrompt.includes('international student') || lowerPrompt.includes('ssn') || lowerPrompt.includes('foreign')) {
+        return "For international students without an SSN filing taxes in the US:\n\n1. Apply for an Individual Taxpayer Identification Number (ITIN) using Form W-7\n2. File Form 1040-NR (U.S. Nonresident Alien Income Tax Return)\n3. Include Form 8843 (Statement for Exempt Individuals)\n4. Report any U.S. source income\n5. Determine if tax treaties apply between the US and your home country\n\nInternational students may be exempt from certain taxes under tax treaties. They should also be aware of their status as either a nonresident alien or resident alien for tax purposes, which is determined by the 'substantial presence test.'";
+    }
+    
+    // Student tax limitations
+    if (lowerPrompt.includes('student') && (lowerPrompt.includes('limitation') || lowerPrompt.includes('limit'))) {
+        return "Limitations for students filing taxes include:\n\n1. Dependency status - if claimed as a dependent on parents' returns, students cannot claim their own exemption\n2. Education credits limitations - American Opportunity Credit is limited to 4 tax years\n3. Student loan interest deduction phases out at higher income levels\n4. Scholarship/grant taxation - amounts used for tuition and books are tax-free, but amounts for room and board are taxable\n5. Work-study income is taxable\n\nAdditionally, students with income below certain thresholds may not be required to file, but should consider filing to receive refunds of any withheld taxes.";
+    }
+    
+    // Business deductions
+    if (lowerPrompt.includes('deduction') || lowerPrompt.includes('deductions')) {
+        return "Common tax deductions for businesses include:\n\n1. Business expenses (office supplies, equipment, etc.)\n2. Home office deduction\n3. Business travel expenses\n4. Business meals (50% deductible)\n5. Vehicle expenses\n6. Retirement plan contributions\n7. Self-employment tax deduction\n8. Health insurance premiums\n9. Interest on business loans\n10. Depreciation of business assets\n\nIt's important to maintain proper documentation for all deductions claimed. Consult with a tax professional for specific advice tailored to your client's situation.";
+    }
+    
+    // Tax credits
+    if (lowerPrompt.includes('credit') || lowerPrompt.includes('credits')) {
+        return "Common business tax credits include:\n\n1. Small Business Health Care Tax Credit\n2. Research & Development (R&D) Tax Credit\n3. Work Opportunity Tax Credit\n4. Disabled Access Credit\n5. Employer-Provided Childcare Facilities Credit\n6. Alternative Motor Vehicle Credit\n7. Investment Tax Credit\n8. Renewable Energy Credits\n\nTax credits are particularly valuable as they directly reduce tax liability dollar-for-dollar, unlike deductions which only reduce taxable income.";
+    }
+    
+    // Filing deadlines
+    if (lowerPrompt.includes('deadline') || lowerPrompt.includes('filing')) {
+        return "For the 2023 tax year, important tax filing deadlines include:\n\n- Individual tax returns (Form 1040): April 15, 2024\n- S-Corporation and Partnership returns: March 15, 2024\n- C-Corporation returns: April 15, 2024\n- Estimated tax payments: April 15, June 15, Sept 15, 2023, and Jan 15, 2024\n\nExtensions are available, but remember that an extension to file is not an extension to pay. Any tax owed should still be paid by the original deadline to avoid penalties and interest.";
+    }
+    
+    // Audit information
+    if (lowerPrompt.includes('audit')) {
+        return "During a tax audit, clients should:\n\n1. Stay calm and professional\n2. Gather all relevant documentation\n3. Consider professional representation\n4. Respond promptly to all IRS requests\n5. Only provide what's requested\n6. Keep detailed records of all communications\n7. Understand their rights as a taxpayer\n\nThe IRS generally has 3 years from the filing date to audit a return, but this can be extended in certain circumstances.";
+    }
+    
+    // Capital gains
+    if (lowerPrompt.includes('capital gain') || lowerPrompt.includes('investment')) {
+        return "For capital gains tax considerations:\n\n1. Short-term gains (assets held less than a year) are taxed as ordinary income\n2. Long-term gains (assets held more than a year) are taxed at preferential rates (0%, 15%, or 20% depending on income)\n3. Net Investment Income Tax of 3.8% may apply to high-income taxpayers\n4. Capital losses can offset capital gains and up to $3,000 of ordinary income\n5. Unused capital losses can be carried forward to future tax years\n\nSpecial rules apply for certain assets like primary residences, collectibles, and qualified small business stock.";
+    }
+    
+    // Retirement accounts
+    if (lowerPrompt.includes('retirement') || lowerPrompt.includes('401k') || lowerPrompt.includes('ira')) {
+        return "Tax considerations for retirement accounts:\n\n1. Traditional 401(k)/IRA contributions are generally tax-deductible, with taxes paid upon withdrawal\n2. Roth 401(k)/IRA contributions are made with after-tax dollars, but qualified withdrawals are tax-free\n3. 2023 contribution limits: $22,500 for 401(k) with $7,500 catch-up for those 50+; $6,500 for IRAs with $1,000 catch-up\n4. Early withdrawals before age 59½ typically incur a 10% penalty plus taxes\n5. Required Minimum Distributions (RMDs) generally begin at age 73\n\nSmall business owners should also consider SEP IRAs, SIMPLE IRAs, or Solo 401(k) plans which may allow for higher contribution limits.";
+    }
+    
+    // Default response for other tax questions
+    return "For this specific tax question, I would recommend:\n\n1. Reviewing the latest IRS guidelines as tax laws change frequently\n2. Considering the specific facts and circumstances of your client's situation\n3. Maintaining thorough documentation to support any tax positions taken\n4. Consulting relevant IRS publications for detailed guidance\n5. Potentially seeking specialized tax advice for complex situations\n\nRemember that tax advice should be tailored to each taxpayer's unique situation, and general guidelines may not apply in all cases.";
+} 
