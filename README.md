@@ -87,6 +87,16 @@ The system accepts questions related to:
 
 ![images](/working/1.png)
 
+![images](/working/2.png)
+
+![images](/working/3.png)
+
+![images](/working/4.png)
+
+![images](/working/5.png)
+
+![images](/working/6.png)
+
 ## Security and Best Practices
 - API key protection through environment variables
 - Input validation for tax-related queries
